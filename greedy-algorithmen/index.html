@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Greedy-Algorithmen Schritt für Schritt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: Kopf, Reiter, Aufgabenkarte, zwei gleich grosse Bühnen (Greedy | Optimal), Steuerleiste. */
+:root {
+  --bg: #edf0f5; --panel: #ffffff; --ink: #17233b; --muted: #5a6880; --line: #cdd5e0;
+  --accent: #c47300; --opt: #0b7f73; --bad: #b5372a;
+  --coin: #e6e9ee; --land: #c9d6c4; --slot: #c3ccd9;
+  --k0: #3f6fc4; --k1: #2f8a68; --k2: #8a5cb8; --k3: #b4574d;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0f1626; --panel: #18223a; --ink: #e9eef7; --muted: #9ba8be; --line: #2f3c58;
+    --accent: #f2a93b; --opt: #45c7b6; --bad: #f08172;
+    --coin: #2a3654; --land: #2c4438; --slot: #3a4866;
+    --k0: #4f7fd6; --k1: #37997a; --k2: #9a6cc8; --k3: #c4675d;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f1626; --panel: #18223a; --ink: #e9eef7; --muted: #9ba8be; --line: #2f3c58;
+  --accent: #f2a93b; --opt: #45c7b6; --bad: #f08172;
+  --coin: #2a3654; --land: #2c4438; --slot: #3a4866;
+  --k0: #4f7fd6; --k1: #37997a; --k2: #9a6cc8; --k3: #c4675d;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 400 17px/1.45 var(--body); }
+main { max-width: 1280px; margin: 0 auto; padding: 20px 20px 32px; display: grid; gap: 14px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 20px; }
+h1 { font: 700 30px/1.1 var(--display); margin: 0; text-wrap: balance; }
+header p { margin: 0; color: var(--muted); max-width: 65ch; }
+button { font: 500 16px/1 var(--body); color: var(--ink); background: var(--panel); border: 1.5px solid var(--line);
+  border-radius: 8px; padding: 11px 16px; cursor: pointer; }
+button:hover:not(:disabled) { border-color: var(--ink); }
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button:disabled { opacity: .4; cursor: default; }
+#tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+#tabs button { font-family: var(--display); font-weight: 600; font-size: 17px; white-space: pre; }
+#tabs button[aria-selected="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.task { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px;
+  display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: start; }
+.task dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; }
+.task dt { color: var(--muted); font-size: 14px; padding-top: 3px; }
+.task dd { margin: 0; }
+#rule { font-weight: 600; }
+.pick { display: grid; gap: 6px; justify-items: end; }
+#examples { display: flex; gap: 6px; }
+#examples button { padding: 9px 14px; }
+#examples button[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1.5px var(--accent); font-weight: 600; }
+#desc { color: var(--muted); font-size: 15px; text-align: right; }
+.stage { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: grid; grid-template-rows: auto 1fr; }
+.panel h2 { font: 600 16px/1 var(--display); margin: 0; padding: 11px 16px; border-bottom: 1px solid var(--line); }
+.panel.g h2 { border-top: 4px solid var(--accent); }
+.panel.o h2 { border-top: 4px solid var(--opt); }
+.panel .view { aspect-ratio: 560 / 360; }
+svg { display: block; width: 100%; height: 100%; }
+.veil { height: 100%; display: grid; place-items: center; color: var(--muted);
+  background: repeating-linear-gradient(135deg, transparent 0 14px, color-mix(in srgb, var(--line) 45%, transparent) 14px 15px); }
+.veil span { background: var(--panel); padding: 6px 14px; border-radius: 6px; }
+#caption { background: var(--panel); border: 1px solid var(--line); border-left: 5px solid var(--accent); border-radius: 8px;
+  padding: 12px 16px; font-size: 19px; min-height: 3.2em; display: flex; align-items: center; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+#btn-play { min-width: 11.5em; background: var(--ink); color: var(--panel); border-color: var(--ink); }
+#btn-opt { margin-left: auto; border-color: var(--opt); color: var(--opt); font-weight: 600; }
+#count { color: var(--muted); font-variant-numeric: tabular-nums; padding: 0 8px; }
+.verdict { min-height: 1.5em; font-size: 19px; }
+.verdict.good strong { color: var(--opt); }
+.verdict.bad strong { color: var(--bad); }
+#note { margin: 0; color: var(--muted); max-width: 75ch; }
+kbd { font: 500 13px var(--body); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; }
+.hint { color: var(--muted); font-size: 14px; margin: 0; }
+@media (max-width: 820px) {
+  .stage, .task { grid-template-columns: 1fr; }
+  .pick { justify-items: start; } #desc { text-align: left; }
+  #btn-opt { margin-left: 0; }
+}
+/* Zeichnungen */
+svg text { font-family: var(--body); }
+.t { fill: var(--ink); font-size: 17px; } .sm { font-size: 15px; } .b { font-weight: 600; }
+.lab { fill: var(--muted); font-size: 13.5px; }
+.dim { opacity: .3; }
+.ok { fill: var(--opt); font-weight: 600; } .no { fill: var(--bad); font-weight: 600; }
+.rule, .grid { stroke: var(--line); stroke-width: 1; }
+.cface { fill: #dadee5; stroke: #7c8494; stroke-width: 1.5; } .gold .cface { fill: #e4c45e; stroke: #9a7a22; }
+.cring { fill: none; stroke: #7c8494; stroke-width: 1; opacity: .7; } .gold .cring, .gold .wreath { stroke: #9a7a22; }
+.wreath { fill: none; stroke: #7c8494; stroke-width: 2.6; stroke-dasharray: 2.4 2.2; }
+.cnum { fill: #262d3b; font-family: var(--display); font-weight: 700; }
+.hotring { fill: none; stroke: var(--accent); stroke-width: 4; }
+.pic { stroke: #2b2118; stroke-width: 1.4; stroke-linejoin: round; }
+.hotbox { fill: color-mix(in srgb, var(--accent) 10%, transparent); stroke: var(--accent); stroke-width: 2.5; }
+.shelf { stroke: var(--muted); stroke-width: 2; stroke-linecap: round; }
+.lab2 { font-size: 13.5px; }
+.wood { fill: #8a5a33; stroke: #2b2118; stroke-width: 1.4; } .wood2 { fill: #6f4526; stroke: #2b2118; stroke-width: 1.4; stroke-linejoin: round; }
+.bag { fill: #4b7d6a; stroke: #2b2118; stroke-width: 1.6; } .bag-in { fill: color-mix(in srgb, #4b7d6a 16%, var(--panel)); stroke: #2b2118; stroke-width: 1.2; }
+.strap { fill: none; stroke: #2f5747; stroke-width: 7; stroke-linecap: round; }
+.metal { fill: #c9a23a; stroke: #2b2118; stroke-width: 1.2; }
+.chest-in { fill: color-mix(in srgb, #8a5a33 22%, var(--panel)); stroke: #2b2118; stroke-width: 1.2; }
+.cell { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 4; opacity: .8; }
+.cand { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 4 6; opacity: .65; }
+.edge { stroke: var(--ink); stroke-width: 3.5; stroke-linecap: round; } .edge.hot { stroke: var(--accent); stroke-width: 5; }
+.city { fill: var(--panel); stroke: var(--ink); stroke-width: 3; } .city.seen { fill: var(--ink); }
+.city.hot { fill: var(--accent); stroke: var(--accent); }
+.startring { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.slot { fill: var(--slot); } .slot.in { fill: var(--k0); } .slot.hot { stroke: var(--accent); stroke-width: 4; }
+.slot-t { fill: #fff; font-size: 16px; font-weight: 600; }
+.land { fill: var(--land); stroke: var(--muted); stroke-width: 1.5; stroke-linejoin: round; }
+.trail { fill: none; stroke: var(--accent); stroke-width: 5; stroke-linejoin: round; stroke-linecap: round; }
+.spot { fill: var(--muted); }
+.nb { fill: none; stroke: var(--ink); stroke-width: 2; stroke-dasharray: 3 3; }
+.hiker line { stroke: #2b2118; stroke-width: 2.6; stroke-linecap: round; }
+.hiker .coat { fill: var(--accent); stroke: #2b2118; stroke-width: 1.2; } .hiker .pack { fill: var(--k3); stroke: #2b2118; stroke-width: 1.2; }
+.hiker .face { fill: #f2cba8; stroke: #2b2118; stroke-width: 1.2; } .hiker .hat { fill: var(--k1); stroke: #2b2118; stroke-width: 1.6; stroke-linejoin: round; }
+.pole { stroke: var(--ink); stroke-width: 3; } .flag { fill: var(--opt); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Greedy-Algorithmen</h1>
+    <p>Ein Greedy-Algorithmus wählt in jedem Schritt, was im Moment am besten aussieht, und nimmt keine Wahl zurück.</p>
+  </header>
+  <nav id="tabs" role="tablist" aria-label="Problem wählen"></nav>
+  <section class="task">
+    <dl>
+      <dt>Ziel</dt><dd id="goal"></dd>
+      <dt>Greedy-Regel</dt><dd id="rule"></dd>
+    </dl>
+    <div class="pick">
+      <div id="examples">
+        <button data-i="0" aria-pressed="true">Beispiel 1</button>
+        <button data-i="1" aria-pressed="false">Beispiel 2</button>
+      </div>
+      <div id="desc"></div>
+    </div>
+  </section>
+  <section class="stage">
+    <div class="panel g"><h2>Greedy</h2><div class="view" id="greedy"></div></div>
+    <div class="panel o"><h2>Optimale Lösung</h2><div class="view" id="optimal"></div></div>
+  </section>
+  <div id="caption" aria-live="polite"></div>
+  <div class="controls">
+    <button id="btn-step">Schritt</button>
+    <button id="btn-play">Abspielen</button>
+    <button id="btn-reset">Zurück zum Anfang</button>
+    <span id="count"></span>
+    <button id="btn-opt">Optimale Lösung zeigen</button>
+  </div>
+  <div id="verdict" class="verdict" aria-live="polite"></div>
+  <p id="note" hidden></p>
+  <p class="hint">Tastatur: <kbd>→</kbd> Schritt, <kbd>Leertaste</kbd> Abspielen und Pause</p>
+</main>
+<script>
+"use strict";
+const W = 560, H = 360;
+const T = (x, y, s, cls = "t", anchor = "start") =>
+  `<text x="${x}" y="${y}" class="${cls}" text-anchor="${anchor}">${s}</text>`;
+const fmtCoin = v => (v >= 100 ? `${v / 100} Fr.` : `${v} Rp.`);
+const fmtAmt = v => (v >= 100 ? `Fr. ${(v / 100).toFixed(2)}` : `${v} Rp.`);
+const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+const km = d => Math.round(d * 10);
+
+/* ---------- 1  Münzen ---------- */
+const DIA = { 500: 31.45, 200: 27.4, 100: 23.2, 50: 18.2, 20: 21.05, 10: 19.15, 5: 17.15 }; // Durchmesser in mm
+function coinPic(c, x, y, cls) {
+  const r = DIA[c] * 0.95, fr = c >= 50, num = c === 50 ? "½" : c >= 100 ? c / 100 : c, wr = r * 0.68;
+  const arc = s => `<path d="M ${x + s * wr * 0.45} ${y + wr * 0.9} A ${wr} ${wr} 0 0 ${s > 0 ? 0 : 1} ${x + s * wr * 0.45} ${y - wr * 0.9}" class="wreath"/>`;
+  const fs = fr ? r * 0.7 : r * 0.72;
+  return `<g class="coinpic ${c === 5 ? "gold" : ""} ${cls}">` +
+    (cls.includes("hot") ? `<circle cx="${x}" cy="${y}" r="${r + 5}" class="hotring"/>` : "") +
+    `<circle cx="${x}" cy="${y}" r="${r}" class="cface"/><circle cx="${x}" cy="${y}" r="${r * 0.86}" class="cring"/>` +
+    arc(1) + arc(-1) +
+    `<text x="${x}" y="${y + (fr ? fs * 0.18 : fs * 0.36)}" font-size="${fs}" class="cnum" text-anchor="middle">${num}</text>` +
+    (fr ? `<text x="${x}" y="${y + r * 0.6}" font-size="${r * 0.3}" class="cnum" text-anchor="middle">Fr.</text>` : "") + `</g>`;
+}
+const coins = {
+  id: "muenzen", name: "Münzen",
+  goal: "Einen Betrag mit möglichst wenigen Münzen bezahlen.",
+  rule: "Nimm immer die grösste Münze, die noch in den Restbetrag passt.",
+  note: "Mit diesen drei Münzsorten hängt es vom Betrag ab, ob Greedy die kleinste Anzahl findet. Mit allen sieben Schweizer Münzsorten gelingt es immer.",
+  better: "min", fmt: n => `${n} Münzen`,
+  instances: [
+    { desc: "In der Kasse liegen nur Fünfliber, Zweifränkler und Zwanziger, von jeder Sorte genug. Zu zahlen: Fr. 7.40", coins: [500, 200, 20], amount: 740 },
+    { desc: "Gleiche Kasse: Fünfliber, Zweifränkler und Zwanziger. Zu zahlen: Fr. 6.00", coins: [500, 200, 20], amount: 600 },
+  ],
+  build(inst) {
+    let rest = inst.amount, taken = [];
+    const steps = [];
+    while (rest > 0) {
+      const c = inst.coins.find(c => c <= rest);
+      taken = [...taken, c]; rest -= c;
+      steps.push({
+        st: { taken, hot: c, rest },
+        text: `${fmtCoin(c)} ist die grösste Münze, die noch passt. ` +
+          (rest > 0 ? `Es bleiben ${fmtAmt(rest)} offen.` : `Der Betrag ist bezahlt: ${taken.length} Münzen.`),
+      });
+    }
+    const best = [[]];
+    for (let a = 1; a <= inst.amount; a++) {
+      best[a] = null;
+      for (const c of inst.coins)
+        if (c <= a && best[a - c] && (!best[a] || best[a - c].length + 1 < best[a].length))
+          best[a] = [...best[a - c], c];
+    }
+    const o = best[inst.amount].slice().sort((a, b) => b - a);
+    return {
+      init: { st: { taken: [], hot: null, rest: inst.amount }, text: "Welche Münze nimmt der Algorithmus zuerst?" },
+      steps, greedyVal: taken.length, optVal: o.length,
+      opt: { st: { taken: o, hot: null, rest: 0 } },
+    };
+  },
+  render(inst, st) {
+    const n = inst.coins.length, gap = n > 4 ? 74 : 110, x0 = W / 2 - gap * (n - 1) / 2;
+    let s = T(20, 30, `Zu zahlen: <tspan class="b">${fmtAmt(inst.amount)}</tspan>`) +
+      T(W - 20, 30, `Rest: <tspan class="b">${fmtAmt(st.rest)}</tspan>`, "t", "end") +
+      T(20, 66, "Münzsorten", "lab");
+    inst.coins.forEach((c, i) => {
+      const x = x0 + i * gap;
+      const cls = c === st.hot ? "hot" : st.rest > 0 && c > st.rest ? "dim" : "";
+      s += coinPic(c, x, 112, cls) + T(x, 164, fmtCoin(c), "lab " + (cls === "dim" ? "dim" : ""), "middle");
+    });
+    s += `<line x1="20" y1="186" x2="${W - 20}" y2="186" class="rule"/>` + T(20, 212, "Bezahlt", "lab");
+    const tg = Math.min(72, (W - 100) / Math.max(1, st.taken.length - 1));
+    st.taken.forEach((c, i) => { s += coinPic(c, 56 + i * tg, 262, i === st.taken.length - 1 && st.hot ? "hot" : ""); });
+    s += T(20, 340, `Anzahl Münzen: <tspan class="b">${st.taken.length}</tspan>`);
+    return s;
+  },
+};
+
+/* ---------- 2  Rucksack ---------- */
+/* Jede Zeichnung: linke untere Ecke (x, y), Breite 60 px, Höhe = Felder * 24 px. */
+const band = (x, y, col) => `<rect x="${x + 3}" y="${y}" width="54" height="7" fill="${col}"/>`;
+const PIC = {
+  Zelt: (x, y) =>
+    `<rect x="${x + 3}" y="${y - 134}" width="54" height="134" rx="12" fill="#5f9a62"/>` +
+    `<path d="M ${x + 12} ${y - 134} q 18 -16 36 0 z" fill="#4b7d4e"/>` + band(x, y - 112, "#2f5d38") + band(x, y - 30, "#2f5d38") +
+    `<polygon points="${x + 16},${y - 52} ${x + 30},${y - 86} ${x + 44},${y - 52}" fill="#f3ead2"/><line x1="${x + 30}" y1="${y - 86}" x2="${x + 30}" y2="${y - 52}"/>`,
+  Schlafsack: (x, y) =>
+    `<rect x="${x + 3}" y="${y - 118}" width="54" height="118" rx="16" fill="#4f7fd6"/>` +
+    [96, 76, 56, 36].map(d => `<line x1="${x + 6}" y1="${y - d}" x2="${x + 54}" y2="${y - d}" stroke-width="0.9"/>`).join("") +
+    band(x, y - 104, "#26467f") + band(x, y - 22, "#26467f"),
+  Isomatte: (x, y) =>
+    `<rect x="${x + 3}" y="${y - 112}" width="54" height="112" fill="#e39a3c"/>` +
+    `<ellipse cx="${x + 30}" cy="${y - 112}" rx="27" ry="8" fill="#f0b765"/><ellipse cx="${x + 30}" cy="${y - 112}" rx="17" ry="5" fill="none"/><ellipse cx="${x + 30}" cy="${y - 112}" rx="8" ry="2.4" fill="none"/>` +
+    band(x, y - 88, "#2b2118") + band(x, y - 30, "#2b2118"),
+  Kocher: (x, y) =>
+    `<rect x="${x + 12}" y="${y - 28}" width="36" height="28" rx="6" fill="#c2473b"/><rect x="${x + 25}" y="${y - 36}" width="10" height="8" fill="#9aa3b2"/>` +
+    `<rect x="${x + 14}" y="${y - 41}" width="32" height="5" fill="#9aa3b2"/><path d="M ${x + 30} ${y - 46} q -6 5 0 5 q 6 0 0 -5" fill="#f2a93b" stroke-width="0.8"/>`,
+  Apotheke: (x, y) =>
+    `<rect x="${x + 5}" y="${y - 44}" width="50" height="44" rx="6" fill="#c2473b"/><rect x="${x + 22}" y="${y - 50}" width="16" height="7" rx="3" fill="none"/>` +
+    `<rect x="${x + 25}" y="${y - 36}" width="10" height="28" fill="#fff"/><rect x="${x + 16}" y="${y - 27}" width="28" height="10" fill="#fff"/>`,
+  Proviant: (x, y) =>
+    `<rect x="${x + 4}" y="${y - 56}" width="52" height="56" rx="7" fill="#e8c452"/><rect x="${x + 4}" y="${y - 68}" width="52" height="14" rx="5" fill="#d09a25"/>` +
+    `<circle cx="${x + 30}" cy="${y - 26}" r="13" fill="#c2473b"/><path d="M ${x + 30} ${y - 39} q 2 -7 8 -8" fill="none"/><ellipse cx="${x + 37}" cy="${y - 43}" rx="5" ry="2.5" fill="#5f9a62"/>`,
+};
+const knap = {
+  id: "rucksack", name: "Rucksack",
+  goal: "Der Rucksack ist 10 Felder hoch, alle Gegenstände sind gleich breit. Möglichst viel Nutzen einpacken.",
+  rule: "Nimm immer den Gegenstand mit dem meisten Nutzen pro Feld, der noch hineinpasst.",
+  note: "Greedy achtet nur auf den Nutzen pro Feld. Ob der Rucksack am Ende voll wird, prüft er nicht.",
+  better: "max", fmt: v => `${v} Punkte`,
+  instances: [
+    { desc: "Zelt, Schlafsack, Isomatte und Kocher", cap: 10,
+      items: [{ n: "Zelt", w: 6, v: 72 }, { n: "Schlafsack", w: 5, v: 50 }, { n: "Isomatte", w: 5, v: 45 }, { n: "Kocher", w: 2, v: 10 }] },
+    { desc: "Apotheke, Proviant, Schlafsack und Isomatte", cap: 10,
+      items: [{ n: "Apotheke", w: 2, v: 30 }, { n: "Proviant", w: 3, v: 36 }, { n: "Schlafsack", w: 5, v: 50 }, { n: "Isomatte", w: 5, v: 45 }] },
+  ],
+  order(inst) {
+    return inst.items.map((_, i) => i).sort((a, b) => inst.items[b].v / inst.items[b].w - inst.items[a].v / inst.items[a].w || a - b);
+  },
+  build(inst) {
+    const steps = [], order = this.order(inst);
+    let status = {}, w = 0, v = 0;
+    order.forEach((i, k) => {
+      const it = inst.items[i], fits = w + it.w <= inst.cap;
+      let text;
+      if (fits) {
+        w += it.w; v += it.v; status = { ...status, [i]: "in" };
+        text = `${it.n}: ${it.v / it.w} Punkte pro Feld, braucht ${it.w} Felder. Passt hinein, also einpacken.`;
+      } else {
+        status = { ...status, [i]: "skip" };
+        text = inst.cap - w === 0 ? `${it.n}: Der Rucksack ist schon voll. Bleibt draussen.`
+          : `${it.n}: braucht ${it.w} Felder, frei sind nur noch ${inst.cap - w}. Bleibt draussen.`;
+      }
+      if (k === order.length - 1) text += ` Fertig: Nutzen ${v} Punkte.`;
+      steps.push({ st: { status, hot: i, w, v }, text });
+    });
+    let best = { v: -1 };
+    for (let m = 0; m < 1 << inst.items.length; m++) {
+      let bw = 0, bv = 0; const stt = {};
+      inst.items.forEach((it, i) => { if (m >> i & 1) { bw += it.w; bv += it.v; stt[i] = "in"; } else stt[i] = "out"; });
+      if (bw <= inst.cap && bv > best.v) best = { v: bv, w: bw, status: stt };
+    }
+    return {
+      init: { st: { status: {}, hot: null, w: 0, v: 0 }, text: "Die Gegenstände sind nach Nutzen pro Feld sortiert. Was packt der Algorithmus zuerst ein?" },
+      steps, greedyVal: v, optVal: best.v,
+      opt: { st: { status: best.status, hot: null, w: best.w, v: best.v } },
+    };
+  },
+  render(inst, st) {
+    const U = 24, order = this.order(inst), CW = 96, base = 170;
+    let s = "";
+    order.forEach((i, c) => {
+      const it = inst.items[i], stt = st.status[i], x = 10 + c * CW, mid = x + CW / 2, off = stt === "skip" || stt === "out";
+      if (i === st.hot) s += `<rect x="${x + 2}" y="12" width="${CW - 4}" height="262" rx="8" class="hotbox"/>`;
+      s += `<g class="pic ${stt ? "dim" : ""}">${PIC[it.n](mid - 30, base)}</g>` +
+        `<line x1="${mid - 34}" y1="${base + 4}" x2="${mid + 34}" y2="${base + 4}" class="shelf"/>` +
+        T(mid, 194, it.n, "t sm b " + (off ? "dim" : ""), "middle") +
+        T(mid, 211, `${it.w} Felder`, "lab " + (off ? "dim" : ""), "middle") +
+        T(mid, 227, `${it.v} Punkte`, "lab " + (off ? "dim" : ""), "middle") +
+        T(mid, 243, `${it.v / it.w} pro Feld`, "lab b " + (off ? "dim" : ""), "middle") +
+        (stt === "in" ? T(mid, 263, "✓ eingepackt", "ok lab2", "middle") : "") +
+        (stt === "skip" ? T(mid, 263, "✗ passt nicht", "no lab2", "middle") : "");
+    });
+    const bx = 446, floor = 318, top = floor - inst.cap * U; // Innenraum 64 x 240
+    s += `<path d="M ${bx - 10} ${top + 30} q -34 60 -4 150" class="strap"/>` +
+      `<path d="M ${bx + 14} ${top - 26} q 18 -22 36 0" class="strap"/>` +
+      `<path d="M ${bx - 12} ${top - 4} q 0 -26 30 -26 h 28 q 30 0 30 26 v ${inst.cap * U + 8} q 0 12 -12 12 h -64 q -12 0 -12 -12 z" class="bag"/>` +
+      `<rect x="${bx}" y="${top}" width="64" height="${inst.cap * U}" class="bag-in"/>`;
+    for (let c = 1; c < inst.cap; c++) s += `<line x1="${bx}" y1="${floor - c * U}" x2="${bx + 64}" y2="${floor - c * U}" class="cell"/>`;
+    let py = floor;
+    order.filter(i => st.status[i] === "in").forEach(i => { s += `<g class="pic">${PIC[inst.items[i].n](bx + 2, py)}</g>`; py -= inst.items[i].w * U; });
+    for (let c = 0; c <= inst.cap; c += 5) s += T(bx + 88, floor - c * U + 5, c, "lab");
+    s += T(14, 312, `Belegt: <tspan class="b">${st.w} von ${inst.cap} Feldern</tspan>`, "t sm") +
+      T(14, 338, `Nutzen: <tspan class="b">${st.v} Punkte</tspan>`, "t sm");
+    return s;
+  },
+};
+
+/* ---------- 3  Rundreise ---------- */
+const tsp = {
+  id: "rundreise", name: "Rundreise",
+  goal: "Alle Städte genau einmal besuchen und zum Start zurückkehren. Die Strecke soll möglichst kurz sein.",
+  rule: "Fahre immer zur nächstgelegenen Stadt, die du noch nicht besucht hast.",
+  note: "Greedy schaut nur auf die nächste Stadt. Abgelegene Städte bleiben übrig und kosten am Schluss lange Wege.",
+  better: "min", fmt: v => `${km(v)} km`,
+  instances: [
+    { desc: "Sieben Städte im Kreis, Start in A", pts: [[2, 5], [3, 8.2], [6, 9.5], [10, 8], [11, 4], [8, 1.5], [4, 2]] },
+    { desc: "Sieben Städte, eine liegt abseits, Start in A", pts: [[8, 5], [6, 5], [4, 4.5], [0, 2.5], [4.5, 0.5], [8, 0.5], [10, 2.5]] },
+  ],
+  len(p, t) { return t.reduce((s, c, i) => s + dist(p[c], p[t[(i + 1) % t.length]]), 0); },
+  build(inst) {
+    const p = inst.pts, n = p.length, L = i => String.fromCharCode(65 + i);
+    const steps = []; let tour = [0], len = 0;
+    while (tour.length < n) {
+      const c = tour[tour.length - 1];
+      let b = -1;
+      for (let j = 0; j < n; j++) if (!tour.includes(j) && (b < 0 || dist(p[c], p[j]) < dist(p[c], p[b]))) b = j;
+      len += dist(p[c], p[b]); tour = [...tour, b];
+      steps.push({ st: { tour, closed: false, hot: b, len }, text: `Von ${L(c)} aus liegt ${L(b)} am nächsten (${km(dist(p[c], p[b]))} km).` });
+    }
+    const last = tour[n - 1]; len += dist(p[last], p[0]);
+    steps.push({ st: { tour, closed: true, hot: null, len }, text: `Alle Städte sind besucht. Zurück zum Start: ${km(dist(p[last], p[0]))} km. Gesamtstrecke ${km(len)} km.` });
+    let best = null;
+    const perm = (pre, rest) => {
+      if (!rest.length) { const l = this.len(p, pre); if (!best || l < best.len - 1e-9) best = { tour: pre, len: l }; return; }
+      rest.forEach((r, i) => perm([...pre, r], rest.filter((_, k) => k !== i)));
+    };
+    perm([0], p.map((_, i) => i).slice(1));
+    return {
+      init: { st: { tour: [0], closed: false, hot: 0, len: 0 }, text: "Start in A. Welche Stadt liegt am nächsten?" },
+      steps, greedyVal: len, optVal: best.len,
+      opt: { st: { tour: best.tour, closed: true, hot: null, len: best.len } },
+    };
+  },
+  render(inst, st) {
+    const p = inst.pts, xs = p.map(q => q[0]), ys = p.map(q => q[1]);
+    const mnx = Math.min(...xs), mxx = Math.max(...xs), mny = Math.min(...ys), mxy = Math.max(...ys);
+    const sc = Math.min(460 / (mxx - mnx), 250 / (mxy - mny), 40);
+    const X = x => W / 2 + (x - (mnx + mxx) / 2) * sc, Y = y => 195 - (y - (mny + mxy) / 2) * sc;
+    let s = T(20, 30, `Strecke: <tspan class="b">${km(st.len)} km</tspan>`);
+    const mx = (mnx + mxx) / 2, my = (mny + mxy) / 2;
+    const nrm = j => Math.hypot(p[j][0] - mx, p[j][1] - my) || 1;
+    const ux = j => (p[j][0] - mx) / nrm(j), uy = j => -(p[j][1] - my) / nrm(j);
+    const cur = st.closed ? null : st.tour[st.tour.length - 1];
+    if (cur !== null) p.forEach((q, j) => {
+      if (!st.tour.includes(j)) s += `<line x1="${X(p[cur][0])}" y1="${Y(p[cur][1])}" x2="${X(q[0])}" y2="${Y(q[1])}" class="cand"/>`;
+    });
+    const seg = (a, b, cls) => `<line x1="${X(p[a][0])}" y1="${Y(p[a][1])}" x2="${X(p[b][0])}" y2="${Y(p[b][1])}" class="edge ${cls}"/>`;
+    for (let i = 0; i + 1 < st.tour.length; i++) s += seg(st.tour[i], st.tour[i + 1], i + 2 === st.tour.length && st.hot !== null && st.tour.length > 1 ? "hot" : "");
+    if (st.closed) s += seg(st.tour[st.tour.length - 1], st.tour[0], "");
+    p.forEach((q, j) => {
+      const seen = st.tour.includes(j), cls = (j === cur ? "hot " : "") + (seen ? "seen" : "");
+      s += (j === 0 ? `<circle cx="${X(q[0])}" cy="${Y(q[1])}" r="15" class="startring"/>` : "") +
+        `<circle cx="${X(q[0])}" cy="${Y(q[1])}" r="9" class="city ${cls}"/>` +
+        T(X(q[0]) + ux(j) * 24, Y(q[1]) + uy(j) * 24 + 5, String.fromCharCode(65 + j), "t sm b", "middle") +
+        (j === 0 ? T(X(q[0]) + ux(j) * 24 + 12, Y(q[1]) + uy(j) * 24 + 5, "Start", "lab") : "");
+    });
+    return s;
+  },
+};
+
+/* ---------- 4  Raumbelegung ---------- */
+const rooms = {
+  id: "raum", name: "Raumbelegung",
+  goal: "Ein Raum, mehrere Anfragen. Möglichst viele Gruppen sollen den Raum nutzen können, ohne dass sich Zeiten überschneiden.",
+  rule: "Nimm immer die Anfrage, die am frühesten beginnt und sich mit keiner angenommenen überschneidet.",
+  note: "Die Regel «wer zuerst beginnt» kann scheitern. Mit der Regel «Nimm die Anfrage, die am frühesten endet» findet Greedy bei diesem Problem immer eine optimale Lösung.",
+  better: "max", fmt: n => `${n} Gruppen`,
+  instances: [
+    { desc: "Sechs Anfragen für die Aula", req: [{ n: "Chor", s: 8, e: 11 }, { n: "Schach", s: 9, e: 10 }, { n: "Robotik", s: 10, e: 12 }, { n: "Theater", s: 11, e: 14 }, { n: "Band", s: 12, e: 13 }, { n: "Tanz", s: 13, e: 15 }] },
+    { desc: "Fünf Anfragen für die Aula", req: [{ n: "Chor", s: 8, e: 10 }, { n: "Theater", s: 9, e: 12 }, { n: "Schach", s: 10, e: 11 }, { n: "Robotik", s: 11, e: 13 }, { n: "Band", s: 13, e: 15 }] },
+  ],
+  build(inst) {
+    const R = inst.req, order = R.map((_, i) => i).sort((a, b) => R[a].s - R[b].s);
+    const clash = (a, b) => a.s < b.e && b.s < a.e;
+    const steps = []; let status = {}, acc = [];
+    order.forEach((i, k) => {
+      const hit = acc.find(j => clash(R[i], R[j]));
+      let text;
+      if (hit === undefined) { acc = [...acc, i]; status = { ...status, [i]: "in" }; text = `${R[i].n} (${R[i].s}–${R[i].e} Uhr) beginnt ${k === 0 ? "am frühesten" : "als Nächstes"} und der Raum ist frei. Angenommen.`; }
+      else { status = { ...status, [i]: "skip" }; text = `${R[i].n} (${R[i].s}–${R[i].e} Uhr) überschneidet sich mit ${R[hit].n}. Abgelehnt.`; }
+      if (k === order.length - 1) text += ` Fertig: ${acc.length} Gruppen.`;
+      steps.push({ st: { status, hot: i, count: acc.length }, text });
+    });
+    let best = { c: -1 };
+    for (let m = 0; m < 1 << R.length; m++) {
+      const pick = R.map((_, i) => i).filter(i => m >> i & 1);
+      if (pick.some(a => pick.some(b => a < b && clash(R[a], R[b])))) continue;
+      if (pick.length > best.c) best = { c: pick.length, status: Object.fromEntries(R.map((_, i) => [i, pick.includes(i) ? "in" : "out"])) };
+    }
+    return {
+      init: { st: { status: {}, hot: null, count: 0 }, text: "Die Anfragen sind nach Beginn sortiert. Welche nimmt der Algorithmus zuerst?" },
+      steps, greedyVal: acc.length, optVal: best.c,
+      opt: { st: { status: best.status, hot: null, count: best.c } },
+    };
+  },
+  render(inst, st) {
+    const R = inst.req, X = t => 110 + (t - 8) * 56;
+    let s = "";
+    for (let t = 8; t <= 15; t++) s += `<line x1="${X(t)}" y1="14" x2="${X(t)}" y2="262" class="grid"/>` + T(X(t), 284, t, "lab", "middle");
+    s += T(X(15) + 14, 284, "Uhr", "lab");
+    R.forEach((r, i) => {
+      const dy = 240 / R.length, bh = Math.min(32, dy - 10), y = 18 + i * dy, stt = st.status[i];
+      const cls = (i === st.hot ? "hot " : "") + (stt === "in" ? "in" : stt === "skip" || stt === "out" ? "dim" : "");
+      s += T(16, y + bh / 2 + 6, r.n, "t sm " + (stt === "skip" || stt === "out" ? "dim" : "")) +
+        `<rect x="${X(r.s)}" y="${y}" width="${X(r.e) - X(r.s)}" height="${bh}" rx="4" class="slot ${cls}"/>` +
+        (stt === "in" ? T(X(r.s) + 10, y + bh / 2 + 6, "✓", "slot-t") : "") +
+        (stt === "skip" ? T(X(r.s) + 10, y + bh / 2 + 6, "✗", "no sm") : "");
+    });
+    s += T(16, 338, `Angenommene Gruppen: <tspan class="b">${st.count}</tspan>`);
+    return s;
+  },
+};
+
+/* ---------- 5  Bergsteigen ---------- */
+const HILL1 = [1, 2, 3.5, 5, 4, 3, 2.5, 3.5, 5, 6.5, 8, 9, 7.5, 5, 3];
+const HILL2 = [1.5, 2.5, 3.5, 4.5, 5, 4, 2.5, 3, 4, 5.5, 7, 8.5, 9, 7, 4];
+function hiker(x, y) {
+  return `<g class="hiker"><line x1="${x + 10}" y1="${y}" x2="${x + 7}" y2="${y - 24}"/>` +
+    `<line x1="${x - 5}" y1="${y}" x2="${x}" y2="${y - 13}"/><line x1="${x + 5}" y1="${y}" x2="${x}" y2="${y - 13}"/>` +
+    `<rect x="${x - 10}" y="${y - 29}" width="6" height="13" rx="2" class="pack"/>` +
+    `<rect x="${x - 5}" y="${y - 30}" width="10" height="18" rx="4" class="coat"/>` +
+    `<line x1="${x + 3}" y1="${y - 25}" x2="${x + 8}" y2="${y - 19}"/>` +
+    `<circle cx="${x}" cy="${y - 36}" r="6" class="face"/>` +
+    `<path d="M ${x - 9} ${y - 39} h 18 M ${x - 5} ${y - 39} v -3 q 5 -6 10 0 v 3 z" class="hat"/></g>`;
+}
+const hill = {
+  id: "berg", name: "Bergsteigen",
+  goal: "Im Nebel den höchsten Punkt des Geländes erreichen. Man sieht nur die beiden Nachbarfelder.",
+  rule: "Geh immer zum höheren der beiden Nachbarfelder. Liegen beide tiefer, bleib stehen.",
+  note: "Greedy sieht nur die Nachbarfelder. Der steilere Weg führt nicht immer zum höchsten Gipfel.",
+  better: "max", fmt: h => `${h * 100} m`,
+  instances: [
+    { desc: "Start im Tal zwischen zwei Bergen", h: HILL1, start: 6 },
+    { desc: "Anderes Gelände, gleicher Startpunkt", h: HILL2, start: 6 },
+  ],
+  build(inst) {
+    const h = inst.h, steps = []; let pos = inst.start, path = [pos];
+    for (;;) {
+      const l = pos > 0 ? h[pos - 1] : -1, r = pos < h.length - 1 ? h[pos + 1] : -1;
+      if (Math.max(l, r) <= h[pos]) {
+        steps.push({ st: { path, hot: pos, stuck: true }, text: `Beide Nachbarfelder liegen tiefer. Der Algorithmus bleibt stehen: ${h[pos] * 100} m.` });
+        break;
+      }
+      const nx = r > l ? pos + 1 : pos - 1, dir = r > l ? "rechts" : "links";
+      const seen = [l >= 0 ? `links ${l * 100} m` : "", r >= 0 ? `rechts ${r * 100} m` : ""].filter(Boolean).join(", ");
+      steps.push({ st: { path: [...path, nx], hot: nx, stuck: false }, text: `Nachbarfelder: ${seen}. Nach ${dir} geht es höher hinauf, also ein Schritt nach ${dir}.` });
+      pos = nx; path = [...path, nx];
+    }
+    const top = h.indexOf(Math.max(...h));
+    return {
+      init: { st: { path: [inst.start], hot: inst.start, stuck: false }, text: "In welche Richtung geht der Algorithmus?" },
+      steps, greedyVal: h[pos], optVal: h[top],
+      opt: { st: { path: [], hot: top, stuck: false, flag: true } },
+    };
+  },
+  render(inst, st) {
+    const h = inst.h, n = h.length, X = i => 30 + i * (500 / (n - 1)), Y = v => 322 - v * 26;
+    let s = `<polygon points="${X(0)},332 ${h.map((v, i) => `${X(i)},${Y(v)}`).join(" ")} ${X(n - 1)},332" class="land"/>`;
+    if (st.path.length > 1) s += `<polyline points="${st.path.map(i => `${X(i)},${Y(h[i])}`).join(" ")}" class="trail"/>`;
+    h.forEach((v, i) => { s += `<circle cx="${X(i)}" cy="${Y(v)}" r="3" class="spot"/>`; });
+    const c = st.hot;
+    if (!st.flag) [c - 1, c + 1].forEach(j => {
+      if (j >= 0 && j < n) s += `<circle cx="${X(j)}" cy="${Y(h[j])}" r="8" class="nb"/>` + T(X(j) + (j < c ? -6 : 6), Y(h[j]) - 14, `${h[j] * 100} m`, "lab", j < c ? "end" : "start");
+    });
+    s += hiker(X(c), Y(h[c]));
+    s += T(20, 30, st.flag ? `Höchster Gipfel: <tspan class="b">${h[c] * 100} m</tspan>` : `Höhe: <tspan class="b">${h[c] * 100} m</tspan>`);
+    return s;
+  },
+};
+
+const PROBLEMS = [coins, knap, tsp, rooms, hill];
+if (typeof module !== "undefined") module.exports = { PROBLEMS };
+
+/* ---------- Steuerung ---------- */
+if (typeof document !== "undefined") (() => {
+  const $ = id => document.getElementById(id);
+  const INTERVAL = 1400;
+  let pi = 0, ii = 0, k = 0, revealed = false, timer = null, run = null;
+  const svg = (inner, label) => `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${label}">${inner}</svg>`;
+
+  function stop() { clearInterval(timer); timer = null; }
+  function load(p, i) { stop(); pi = p; ii = i; k = 0; revealed = false; run = PROBLEMS[pi].build(PROBLEMS[pi].instances[ii]); draw(); }
+  function step() { if (k < run.steps.length) { k++; draw(); } if (k >= run.steps.length) stop(), draw(); }
+  function toggle() {
+    if (timer) stop();
+    else { if (k >= run.steps.length) { k = 0; revealed = false; } timer = setInterval(step, INTERVAL); }
+    draw();
+  }
+
+  function draw() {
+    const P = PROBLEMS[pi], inst = P.instances[ii], done = k >= run.steps.length;
+    const frame = k === 0 ? run.init : run.steps[k - 1];
+    document.querySelectorAll("#tabs button").forEach((b, i) => b.setAttribute("aria-selected", i === pi));
+    document.querySelectorAll("#examples button").forEach((b, i) => b.setAttribute("aria-pressed", i === ii));
+    $("goal").textContent = P.goal; $("rule").textContent = P.rule; $("desc").textContent = inst.desc;
+    $("greedy").innerHTML = svg(P.render(inst, frame.st), "Greedy-Lösung");
+    $("caption").textContent = frame.text;
+    $("count").textContent = `Schritt ${k} von ${run.steps.length}`;
+    $("btn-step").disabled = done;
+    $("btn-play").textContent = timer ? "Pause" : done ? "Nochmals abspielen" : "Abspielen";
+    $("btn-opt").disabled = !done || revealed;
+    $("btn-reset").disabled = k === 0;
+    const same = Math.abs(run.greedyVal - run.optVal) < 1e-6;
+    if (revealed) {
+      const optSt = same && P !== hill ? { ...run.steps[run.steps.length - 1].st, hot: null } : run.opt.st;
+      $("optimal").innerHTML = svg(P.render(inst, optSt), "Optimale Lösung");
+      $("verdict").className = "verdict " + (same ? "good" : "bad");
+      $("verdict").innerHTML = same
+        ? `<strong>Greedy ist hier optimal.</strong> Beide Lösungen: ${P.fmt(run.optVal)}.`
+        : `<strong>Greedy ist hier nicht optimal.</strong> Greedy: ${P.fmt(run.greedyVal)}. Optimal: ${P.fmt(run.optVal)}.`;
+      $("note").textContent = P.note; $("note").hidden = false;
+    } else {
+      $("optimal").innerHTML = `<div class="veil"><span>${done ? "Wie sähe die beste Lösung aus?" : "Noch verdeckt"}</span></div>`;
+      $("verdict").className = "verdict"; $("verdict").textContent = ""; $("note").hidden = true;
+    }
+  }
+
+  $("tabs").innerHTML = PROBLEMS.map((p, i) => `<button role="tab" data-i="${i}">${i + 1}  ${p.name}</button>`).join("");
+  $("tabs").addEventListener("click", e => { const b = e.target.closest("button"); if (b) load(+b.dataset.i, 0); });
+  $("examples").addEventListener("click", e => { const b = e.target.closest("button"); if (b) load(pi, +b.dataset.i); });
+  $("btn-step").addEventListener("click", () => { stop(); step(); });
+  $("btn-play").addEventListener("click", toggle);
+  $("btn-reset").addEventListener("click", () => load(pi, ii));
+  $("btn-opt").addEventListener("click", () => { revealed = true; draw(); });
+  document.addEventListener("keydown", e => {
+    if (e.target.closest("button, input, a")) return;
+    if (e.key === "ArrowRight") { stop(); step(); }
+    if (e.key === " ") { e.preventDefault(); toggle(); }
+  });
+  load(0, 0);
+})();
+
+</script>
+</body>
+</html>
